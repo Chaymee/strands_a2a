@@ -18,6 +18,7 @@ args = parser.parse_args()
 
 # Get API password from environment variable
 API_PASSWORD = os.getenv('API_PASSWORD')
+HOST = os.getenv('API_HOST', '0.0.0.0')
 print(f"API authentication enabled. Set API_PASSWORD environment variable to change the password.")
 if not API_PASSWORD:
     raise ValueError("API_PASSWORD environment variable is not set. Please set it to enable authentication.")
@@ -68,7 +69,7 @@ except Exception as e:
     print(f"Could not determine version information: {e}")
 
 # Create A2A server
-a2a_server = A2AServer(agent=strands_agent, host="0.0.0.0", port=args.port)
+a2a_server = A2AServer(agent=strands_agent, host=HOST, port=args.port)
 
 # Get the FastAPI app
 app = a2a_server.to_fastapi_app()
@@ -94,6 +95,6 @@ async def authenticate_requests(request: Request, call_next):
     return await call_next(request)
 
 # Start the server
-print(f"Starting A2A Server on http://0.0.0.0:{args.port}")
-print(f"Navigate to http://0.0.0.0:{args.port}/.well-known/agent-card.json to get agent card")
-uvicorn.run(app, host="0.0.0.0", port=args.port)
+print(f"Starting A2A Server on http://{HOST}:{args.port}")
+print(f"Navigate to http://{HOST}:{args.port}/.well-known/agent-card.json to get agent card")
+uvicorn.run(app, host=HOST, port=args.port)
