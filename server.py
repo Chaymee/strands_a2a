@@ -5,12 +5,21 @@ from strands_tools.calculator import calculator
 import importlib.metadata
 import argparse
 import os
+<<<<<<< Updated upstream
+=======
+from fastapi import Request, HTTPException
+from fastapi.responses import JSONResponse
+import uvicorn
+from strands.models.litellm import LiteLLMModel
+
+>>>>>>> Stashed changes
 
 # Parse command line arguments
 parser = argparse.ArgumentParser(description='Start A2A Server with Calculator Agent')
 parser.add_argument('-p', '--port', type=int, default=9000, help='Port number (default: 9000)')
 args = parser.parse_args()
 
+<<<<<<< Updated upstream
 # # Create a Strands agent with calculator tool
 # # Using Amazon Bedrock default model provider and Claude 3.7 Sonnet as default FM
 # strands_agent = Agent(
@@ -19,6 +28,14 @@ args = parser.parse_args()
 #     tools=[calculator],
 #     callback_handler=None,
 # )
+=======
+# Get API password from environment variable
+API_PASSWORD = os.getenv('API_PASSWORD')
+print(f"API authentication enabled. Set API_PASSWORD environment variable to change the password.")
+if not API_PASSWORD:
+    raise ValueError("API_PASSWORD environment variable is not set. Please set it to enable authentication.")
+
+>>>>>>> Stashed changes
 
 # Configure LiteLLM with custom endpoint
 litellm_endpoint = os.environ.get("LLM_SERVICE_ENDPOINT", "https://lite-llm.mymaas.net")
@@ -45,6 +62,15 @@ strands_agent = Agent(
     callback_handler=None,
 )
 
+# # Create a Strands agent with calculator tool
+# # Using Amazon Bedrock default model provider and Claude 3.7 Sonnet as default FM
+# strands_agent = Agent(
+#     name="Calculator Agent",
+#     description="A calculator agent that can perform basic arithmetic operations.",
+#     tools=[calculator],
+#     callback_handler=None,
+# )
+
 
 # Get version information
 try:
@@ -58,7 +84,30 @@ except Exception as e:
 # Create A2A server
 a2a_server = A2AServer(agent=strands_agent, host="0.0.0.0", port=args.port)
 
+# Get the FastAPI app
+app = a2a_server.to_fastapi_app()
+
+# Add authentication middleware
+@app.middleware("http")
+async def authenticate_requests(request: Request, call_next):
+    # Skip authentication for agent card endpoint
+    if request.url.path == "/.well-known/agent-card.json":
+        return await call_next(request)
+
+    # Check for Authorization header
+    auth_header = request.headers.get("Authorization")
+
+    # Validate token
+    if auth_header != f"Bearer {API_PASSWORD}":
+        return JSONResponse(
+            status_code=401,
+            content={"error": "Unauthorized", "message": "Invalid or missing API password"}
+        )
+
+    # Continue to the actual endpoint
+    return await call_next(request)
+
 # Start the server
 print(f"Starting A2A Server on http://0.0.0.0:{args.port}")
 print(f"Navigate to http://0.0.0.0:{args.port}/.well-known/agent-card.json to get agent card")
-a2a_server.serve()
+uvicorn.run(app, host="0.0.0.0", port=args.port)

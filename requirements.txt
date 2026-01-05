@@ -1,4 +1,5 @@
 strands-agents[a2a,litellm]
+<<<<<<< Updated upstream
 strands-agents-tools
 a2a-sdk[sql]
 bedrock-agentcore  

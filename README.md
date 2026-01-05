@@ -13,6 +13,11 @@ This project sets up a basic A2A server using the Strands framework. It creates 
 - AWS_ACCESS_KEY
 - AWS_SECRET_ACCESS_KEY
 
+### If you are using aws sso
+Sign in with `aws sso login --profile<profile-name>`
+then export your profile `export AWS_PROFILE=<profile-name>`
+to be able to access 
+
 ## Setup Instructions
 
 ### 1. Create and Activate a Python Virtual Environment
@@ -50,6 +55,18 @@ This will install:
 
 ## Running the A2A Server
 
+### Set API Password (Optional)
+
+Set the API password for authenticating API calls:
+
+```bash
+export API_PASSWORD="your_secure_password_here"
+```
+
+If not set, the server will use `default_password` as the default password.
+
+### Start the Server
+
 To start the A2A server, run:
 
 ```bash
@@ -76,10 +93,13 @@ This endpoint provides standardized metadata about the agent capabilities accord
 
 ### Executing the agent
 
-Run the following from terminal
+The server requires password authentication for API calls. Set the `API_PASSWORD` environment variable before starting the server (defaults to `default_password` if not set).
+
+Run the following from terminal with authentication:
 ```
-curl -X POST http://localhost:9001 \
+curl -X POST http://localhost:9000 \
 -H "Content-Type: application/json" \
+-H "Authorization: Bearer your_secure_password_here" \
 -d '{
   "jsonrpc": "2.0",
   "id": "req-001",
@@ -98,6 +118,8 @@ curl -X POST http://localhost:9001 \
   }
 }' | jq .
 ```
+
+**Note:** The `/.well-known/agent-card.json` endpoint does NOT require authentication and can be accessed without the Authorization header.
 
 ## Project Structure
 
