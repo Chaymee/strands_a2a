@@ -1,19 +1,46 @@
 from strands import Agent
 from strands.multiagent.a2a import A2AServer
+from strands.models.litellm import LiteLLMModel
 from strands_tools.calculator import calculator
 import importlib.metadata
 import argparse
+import os
 
 # Parse command line arguments
 parser = argparse.ArgumentParser(description='Start A2A Server with Calculator Agent')
 parser.add_argument('-p', '--port', type=int, default=9000, help='Port number (default: 9000)')
 args = parser.parse_args()
 
-# Create a Strands agent with calculator tool
-# Using Amazon Bedrock default model provider and Claude 3.7 Sonnet as default FM
+# # Create a Strands agent with calculator tool
+# # Using Amazon Bedrock default model provider and Claude 3.7 Sonnet as default FM
+# strands_agent = Agent(
+#     name="Calculator Agent",
+#     description="A calculator agent that can perform basic arithmetic operations.",
+#     tools=[calculator],
+#     callback_handler=None,
+# )
+
+# Configure LiteLLM with custom endpoint
+litellm_endpoint = os.environ.get("LLM_SERVICE_ENDPOINT", "https://lite-llm.mymaas.net")
+litellm_api_key = os.environ.get("LLM_SERVICE_API_KEY")
+
+if not litellm_api_key:
+    raise ValueError("LLM_SERVICE_API_KEY environment variable is required")
+
+# Create LiteLLM model with custom endpoint configuration
+llm_model = LiteLLMModel(
+    client_args={
+        "api_base": litellm_endpoint,
+        "api_key": litellm_api_key,
+    },
+    model_id="openai/vertex-claude-4-5-sonnet",
+)
+
+# Create a Strands agent with calculator tool and custom LiteLLM model
 strands_agent = Agent(
     name="Calculator Agent",
     description="A calculator agent that can perform basic arithmetic operations.",
+    model=llm_model,
     tools=[calculator],
     callback_handler=None,
 )
