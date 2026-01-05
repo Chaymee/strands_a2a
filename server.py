@@ -97,4 +97,4 @@ async def authenticate_requests(request: Request, call_next):
 # Start the server
 print(f"Starting A2A Server on http://{HOST}:{args.port}")
 print(f"Navigate to http://{HOST}:{args.port}/.well-known/agent-card.json to get agent card")
-uvicorn.run(app, host=HOST, port=args.port)
+uvicorn.run(app, host="0.0.0.0", port=args.port)
