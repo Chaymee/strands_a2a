@@ -5,37 +5,23 @@ from strands_tools.calculator import calculator
 import importlib.metadata
 import argparse
 import os
-<<<<<<< Updated upstream
-=======
 from fastapi import Request, HTTPException
 from fastapi.responses import JSONResponse
 import uvicorn
 from strands.models.litellm import LiteLLMModel
 
->>>>>>> Stashed changes
 
 # Parse command line arguments
 parser = argparse.ArgumentParser(description='Start A2A Server with Calculator Agent')
 parser.add_argument('-p', '--port', type=int, default=9000, help='Port number (default: 9000)')
 args = parser.parse_args()
 
-<<<<<<< Updated upstream
-# # Create a Strands agent with calculator tool
-# # Using Amazon Bedrock default model provider and Claude 3.7 Sonnet as default FM
-# strands_agent = Agent(
-#     name="Calculator Agent",
-#     description="A calculator agent that can perform basic arithmetic operations.",
-#     tools=[calculator],
-#     callback_handler=None,
-# )
-=======
 # Get API password from environment variable
 API_PASSWORD = os.getenv('API_PASSWORD')
 print(f"API authentication enabled. Set API_PASSWORD environment variable to change the password.")
 if not API_PASSWORD:
     raise ValueError("API_PASSWORD environment variable is not set. Please set it to enable authentication.")
 
->>>>>>> Stashed changes
 
 # Configure LiteLLM with custom endpoint
 litellm_endpoint = os.environ.get("LLM_SERVICE_ENDPOINT", "https://lite-llm.mymaas.net")
