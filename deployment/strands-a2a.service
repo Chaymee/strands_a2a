@@ -1,0 +1,37 @@
+[Unit]
+Description=Strands A2A Multi-Agent Server
+Documentation=https://github.com/strands-agents/strands-a2a
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/strands_a2a
+
+# Environment variables (non-secret)
+Environment="AWS_REGION=us-east-1"
+Environment="API_HOST=0.0.0.0"
+Environment="PATH=/home/ubuntu/strands_a2a/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+# Start the server using the wrapper script
+ExecStart=/home/ubuntu/strands_a2a/start_server.sh
+
+# Restart configuration
+Restart=always
+RestartSec=10
+StartLimitInterval=200
+StartLimitBurst=5
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=strands-a2a
+
+[Install]
+WantedBy=multi-user.target

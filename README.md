@@ -6,10 +6,20 @@ A simple implementation of Strands agents exposed as an A2A (Agent-to-Agent) ser
 
 This project sets up A2A servers using the Strands framework. It includes two agents:
 
-1. **Calculator Agent** (`calculator.py`) - Performs basic arithmetic operations using the [Strands calculator tool](https://github.com/strands-agents/tools/tree/main/src/strands_tools)
-2. **Factor Agent** (`factor.py`) - Extracts numbers from input text and returns all possible factors of that number
+1. **Calculator Agent** - Performs basic arithmetic operations using the [Strands calculator tool](https://github.com/strands-agents/tools/tree/main/src/strands_tools)
+2. **Factor Agent** - Extracts numbers from input text and returns all possible factors of that number
 
 Both agents are exposed through an A2A server interface, allowing other agents to communicate with them.
+
+## Three Ways to Run the Agents
+
+This project provides **three separate executable files**:
+
+1. **`server.py`** - Multi-agent server that runs BOTH Calculator and Factor agents together in parallel processes
+2. **`calculator.py`** - Standalone server that runs ONLY the Calculator Agent
+3. **`factor.py`** - Standalone server that runs ONLY the Factor Agent
+
+**Note:** `server.py` does NOT call `calculator.py` or `factor.py`. Instead, it contains its own implementation of both agents and runs them in parallel. The individual files (`calculator.py` and `factor.py`) are standalone alternatives for running each agent separately.
 
 ## Prerequisites
 
@@ -185,27 +195,87 @@ curl -X POST http://localhost:9001 \
 
 ## Project Structure
 
-- `server.py`: **Main server** - Starts both Calculator and Factor agents in parallel processes
-- `calculator.py`: Standalone A2A server with a Calculator Agent that performs arithmetic operations
-- `factor.py`: Standalone A2A server with a Factor Agent that finds all factors of a number
+### Three Executable Files:
+
+1. **`server.py`** - Multi-agent server (runs BOTH agents together)
+   - Starts Calculator Agent on port 9000
+   - Starts Factor Agent on port 9001
+   - Runs both agents in parallel processes using Python's multiprocessing
+   - Contains its own implementation of both agents (does NOT import from calculator.py or factor.py)
+
+2. **`calculator.py`** - Standalone Calculator Agent server
+   - Runs ONLY the Calculator Agent
+   - Default port: 9000 (configurable with `-p` flag)
+   - Independent executable for running calculator functionality alone
+
+3. **`factor.py`** - Standalone Factor Agent server
+   - Runs ONLY the Factor Agent
+   - Default port: 9001 (configurable with `-p` flag)
+   - Independent executable for running factor functionality alone
+
+### Deployment Files:
+
+- `start_server.sh`: Wrapper script that fetches secrets from AWS Secrets Manager and starts the server
+- `deployment/`: Directory containing AWS deployment configuration
+  - `DEPLOYMENT.md`: Complete guide for deploying to AWS EC2
+  - `setup-aws.sh`: Automated script to create AWS resources (IAM roles, policies, secrets)
+  - `strands-a2a.service`: systemd service file for auto-start on boot
+  - `ec2-iam-policy.json`: IAM policy for EC2 instance to access secrets
+
+### Other Files:
+
 - `requirements.txt`: List of Python dependencies required for the project
 
 ## How It Works
 
-**server.py** (Multi-Agent Server):
-1. Uses Python's `multiprocessing` module to run both agents in parallel
-2. Starts Calculator Agent on port 9000
-3. Starts Factor Agent on port 9001
-4. Handles graceful shutdown with Ctrl+C
+### server.py (Multi-Agent Server - Combination of Both Agents):
+1. Contains its own implementation of both the Calculator and Factor agents
+2. Uses Python's `multiprocessing` module to run both agents in parallel
+3. Starts Calculator Agent on port 9000
+4. Starts Factor Agent on port 9001
+5. Handles graceful shutdown with Ctrl+C
+6. **Does NOT call or import from calculator.py or factor.py** - it's a self-contained implementation
 
-**Individual Agent Files** (calculator.py, factor.py):
+### Individual Agent Files (calculator.py and factor.py - Standalone):
 1. Define tool function(s) using the `@tool` decorator
 2. Create a Strands agent with the tool(s) and LiteLLM model configuration
 3. Initialize an A2A server with the agent
 4. Add authentication middleware
 5. Start the server to listen for incoming requests
+6. Can be run independently without server.py
 
 Other agents can now connect to these servers and utilize their functionality through the A2A protocol.
+
+## AWS EC2 Deployment
+
+To deploy this application to AWS EC2 with automatic startup and secure credential management:
+
+### Quick Start
+
+1. **Run the automated setup script:**
+   ```bash
+   cd deployment
+   ./setup-aws.sh
+   ```
+   This will create all necessary AWS resources (Secrets Manager secret, IAM roles, policies, etc.)
+
+2. **Follow the deployment guide:**
+   See [deployment/DEPLOYMENT.md](deployment/DEPLOYMENT.md) for complete step-by-step instructions.
+
+### Key Features of AWS Deployment
+
+- **Automatic startup on boot** using systemd
+- **Secure credential storage** with AWS Secrets Manager (no hardcoded passwords)
+- **IAM role-based access** for secure secret retrieval
+- **Service monitoring** with systemd and CloudWatch integration
+- **Easy updates** - pull code changes and restart service
+
+The deployment uses:
+- `start_server.sh` - Fetches secrets and starts the server
+- `deployment/strands-a2a.service` - systemd service for auto-start
+- `deployment/setup-aws.sh` - Automated AWS resource creation
+
+For detailed instructions, see [deployment/DEPLOYMENT.md](deployment/DEPLOYMENT.md).
 
 ## Connecting with Solace Agent Mesh
 
