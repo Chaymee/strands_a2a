@@ -88,6 +88,7 @@ def start_calculator_agent(port=9000):
     # Get API password from environment variable
     API_PASSWORD = os.getenv('API_PASSWORD')
     HOST = os.getenv('API_HOST', '0.0.0.0')
+    PUBLIC_URL = os.getenv('PUBLIC_URL')  # Optional: Public URL for agent card
 
     if not API_PASSWORD:
         raise ValueError("API_PASSWORD environment variable is not set. Please set it to enable authentication.")
@@ -105,7 +106,10 @@ def start_calculator_agent(port=9000):
     )
 
     # Create A2A server
-    a2a_server = A2AServer(agent=calculator_agent, host=HOST, port=port)
+    # If PUBLIC_URL is set, use it for http_url (what clients see)
+    # Otherwise, host (bind address) will be used
+    http_url = f"{PUBLIC_URL}:{port}" if PUBLIC_URL else None
+    a2a_server = A2AServer(agent=calculator_agent, host=HOST, port=port, http_url=http_url)
     app = a2a_server.to_fastapi_app()
 
     # Add authentication middleware
@@ -134,6 +138,7 @@ def start_factor_agent(port=9001):
     # Get API password from environment variable
     API_PASSWORD = os.getenv('API_PASSWORD')
     HOST = os.getenv('API_HOST', '0.0.0.0')
+    PUBLIC_URL = os.getenv('PUBLIC_URL')  # Optional: Public URL for agent card
 
     if not API_PASSWORD:
         raise ValueError("API_PASSWORD environment variable is not set. Please set it to enable authentication.")
@@ -151,7 +156,10 @@ def start_factor_agent(port=9001):
     )
 
     # Create A2A server
-    a2a_server = A2AServer(agent=factor_agent, host=HOST, port=port)
+    # If PUBLIC_URL is set, use it for http_url (what clients see)
+    # Otherwise, host (bind address) will be used
+    http_url = f"{PUBLIC_URL}:{port}" if PUBLIC_URL else None
+    a2a_server = A2AServer(agent=factor_agent, host=HOST, port=port, http_url=http_url)
     app = a2a_server.to_fastapi_app()
 
     # Add authentication middleware

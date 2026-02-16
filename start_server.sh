@@ -42,6 +42,15 @@ if [ -z "$LLM_SERVICE_API_KEY" ] || [ "$LLM_SERVICE_API_KEY" = "null" ]; then
 fi
 
 echo "Secrets loaded successfully"
+
+# Get EC2 public hostname for agent card URLs (if running on EC2)
+if curl -s -f -m 2 http://169.254.169.254/latest/meta-data/public-hostname > /dev/null 2>&1; then
+    export PUBLIC_URL="http://$(curl -s http://169.254.169.254/latest/meta-data/public-hostname)"
+    echo "Detected EC2 public hostname: $PUBLIC_URL"
+else
+    echo "Not running on EC2 or metadata service unavailable, using bind address for agent card"
+fi
+
 echo "Starting Strands A2A Server..."
 
 # Get the directory where this script is located
