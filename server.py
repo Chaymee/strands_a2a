@@ -90,6 +90,10 @@ def start_calculator_agent(port=9000):
     HOST = os.getenv('API_HOST', '0.0.0.0')
     PUBLIC_URL = os.getenv('PUBLIC_URL')  # Optional: Public URL for agent card
 
+    # Debug logging
+    print(f"[Calculator Agent] HOST={HOST}")
+    print(f"[Calculator Agent] PUBLIC_URL={PUBLIC_URL}")
+
     if not API_PASSWORD:
         raise ValueError("API_PASSWORD environment variable is not set. Please set it to enable authentication.")
 
@@ -139,6 +143,10 @@ def start_factor_agent(port=9001):
     API_PASSWORD = os.getenv('API_PASSWORD')
     HOST = os.getenv('API_HOST', '0.0.0.0')
     PUBLIC_URL = os.getenv('PUBLIC_URL')  # Optional: Public URL for agent card
+
+    # Debug logging
+    print(f"[Factor Agent] HOST={HOST}")
+    print(f"[Factor Agent] PUBLIC_URL={PUBLIC_URL}")
 
     if not API_PASSWORD:
         raise ValueError("API_PASSWORD environment variable is not set. Please set it to enable authentication.")
