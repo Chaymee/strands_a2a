@@ -56,9 +56,17 @@ echo "Starting Strands A2A Server..."
 # Get the directory where this script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
+# Change to script directory
+cd "$SCRIPT_DIR"
+
+# Pull latest code from git on startup
+if [ -d ".git" ]; then
+    echo "Pulling latest code from git..."
+    git pull || echo "Warning: git pull failed, using existing code"
+fi
+
 # Activate virtual environment
 source "$SCRIPT_DIR/.venv/bin/activate"
 
 # Start the server
-cd "$SCRIPT_DIR"
 exec python server.py
