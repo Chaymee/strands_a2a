@@ -113,19 +113,45 @@ curl -X POST http://localhost:9001 \
 
 ### Load Testing
 
+The load testing framework simulates concurrent users making requests to test performance, throughput, and reliability.
+
+**Using the Python script directly (recommended for AWS deployments):**
+
 ```bash
-# Quick smoke test (10 users)
-./tests/run_load_test.sh light
+# Make the script executable
+chmod +x ./tests/load_test.py
 
-# Test with 100 concurrent users
-./tests/run_load_test.sh 100
+# Test Calculator Agent - 100 users, 5 requests each (500 total)
+./tests/load_test.py --url http://your-server.com:9000 --password your_password --agent calculator --users 100
 
-# Test factor agent with 250 users
-./tests/run_load_test.sh -u http://localhost:9001 -a factor 250
+# Test Factor Agent - 100 users, 300 requests each (30,000 total)
+./tests/load_test.py --url http://your-server.com:9000 --password your_password --agent factor --users 100 --requests 300
 
 # Custom test with output file
-./tests/run_load_test.sh --users 150 --requests 10 -o results.json custom
+./tests/load_test.py --url http://your-server.com:9001 --password your_password --agent factor --users 50 --requests 10 --output results.json
 ```
+
+**Using the wrapper script (for local testing):**
+
+```bash
+# Quick smoke test (10 users, 5 requests = 50 total)
+./tests/run_load_test.sh -p your_password light
+
+# Test with 100 concurrent users
+./tests/run_load_test.sh -p your_password 100
+
+# Test factor agent with 250 users
+./tests/run_load_test.sh -u http://localhost:9001 -p your_password -a factor 250
+```
+
+**What gets measured:**
+- Response times (min, max, mean, median, p95, p99)
+- Success/failure rates (HTTP 200 = success)
+- Throughput (requests per second)
+- Total duration
+- Error details (if any failures occur)
+
+**Note:** A "successful" request means the server returned HTTP 200. Timeouts, connection errors, or HTTP errors (401, 500, etc.) are counted as failures. If the service is overloaded or locked up, you'll see timeouts instead of HTTP responses.
 
 ## Configuration
 
