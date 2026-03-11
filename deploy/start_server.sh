@@ -56,8 +56,8 @@ echo "Starting Strands A2A Server..."
 # Get the directory where this script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-# Change to script directory
-cd "$SCRIPT_DIR"
+# Change to project root directory (script is now in deploy/ subdirectory)
+cd "$SCRIPT_DIR/.."
 
 # Pull latest code from git on startup
 if [ -d ".git" ]; then
@@ -66,7 +66,7 @@ if [ -d ".git" ]; then
 fi
 
 # Activate virtual environment
-source "$SCRIPT_DIR/.venv/bin/activate"
+source "$SCRIPT_DIR/../.venv/bin/activate"
 
-# Start the server
-exec python server.py
+# Start the server (using module syntax for src/ structure)
+exec python -m src.server

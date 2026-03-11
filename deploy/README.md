@@ -50,7 +50,7 @@ aws secretsmanager update-secret \
 ```bash
 aws iam create-policy \
     --policy-name StrandsA2ASecretsAccess \
-    --policy-document file://deployment/ec2-iam-policy.json \
+    --policy-document file://deploy/ec2-iam-policy.json \
     --description "Allow EC2 instance to read Strands A2A secrets"
 ```
 
@@ -181,7 +181,7 @@ chmod +x start_server.sh
 chown -R ubuntu:ubuntu /home/ubuntu/strands_a2a
 
 # Copy systemd service file
-cp deployment/strands-a2a.service /etc/systemd/system/
+cp deploy/strands-a2a.service /etc/systemd/system/
 
 # Enable and start service
 systemctl daemon-reload

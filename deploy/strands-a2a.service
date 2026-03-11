@@ -16,7 +16,7 @@ Environment="API_HOST=0.0.0.0"
 Environment="PATH=/home/ubuntu/strands_a2a/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 # Start the server using the wrapper script
-ExecStart=/home/ubuntu/strands_a2a/start_server.sh
+ExecStart=/home/ubuntu/strands_a2a/deploy/start_server.sh
 
 # Restart configuration
 Restart=always
