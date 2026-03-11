@@ -175,7 +175,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 
 # Make start script executable
-chmod +x start_server.sh
+chmod +x deploy/start_server.sh
 
 # Set ownership
 chown -R ubuntu:ubuntu /home/ubuntu/strands_a2a
