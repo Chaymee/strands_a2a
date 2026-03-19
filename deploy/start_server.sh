@@ -43,13 +43,9 @@ fi
 
 echo "Secrets loaded successfully"
 
-# Get EC2 public hostname for agent card URLs (if running on EC2)
-if curl -s -f -m 2 http://169.254.169.254/latest/meta-data/public-hostname > /dev/null 2>&1; then
-    export PUBLIC_URL="http://$(curl -s http://169.254.169.254/latest/meta-data/public-hostname)"
-    echo "Detected EC2 public hostname: $PUBLIC_URL"
-else
-    echo "Not running on EC2 or metadata service unavailable, using bind address for agent card"
-fi
+# Set PUBLIC_URL using system hostname
+export PUBLIC_URL="http://$(/usr/bin/hostname)"
+echo "Using hostname for agent card: $PUBLIC_URL"
 
 echo "Starting Strands A2A Server..."
 
