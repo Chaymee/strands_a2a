@@ -43,9 +43,9 @@ fi
 
 echo "Secrets loaded successfully"
 
-# Set PUBLIC_URL using system hostname
-export PUBLIC_URL="http://$(/usr/bin/hostname)"
-echo "Using hostname for agent card: $PUBLIC_URL"
+# Set PUBLIC_URL using public IP
+export PUBLIC_URL="http://$(curl -s ifconfig.me)"
+echo "Using public IP for agent card: $PUBLIC_URL"
 
 echo "Starting Strands A2A Server..."
 
