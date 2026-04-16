@@ -146,7 +146,7 @@ cat > /tmp/user-data.sh <<'EOF'
 apt-get update && apt-get upgrade -y
 
 # Install dependencies
-apt-get install -y python3 python3-pip git jq awscli
+apt-get install -y python3 python3-ensurepip git jq awscli
 
 # Create application directory
 cd /home/ubuntu
@@ -161,8 +161,11 @@ git clone https://github.com/YOUR_USERNAME/strands_a2a.git
 
 cd strands_a2a
 
-# Install requirements system-wide
-pip3 install -r requirements.txt
+# Bootstrap pip and create virtual environment
+python3 -m ensurepip --upgrade
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 
 # Make start script executable
 chmod +x deploy/start_server.sh
@@ -309,7 +312,8 @@ cd /home/ubuntu/strands_a2a
 git pull
 
 # Update dependencies if needed
-pip3 install -r requirements.txt
+source .venv/bin/activate
+pip install -r requirements.txt
 
 # Restart the service
 sudo systemctl restart strands-a2a.service

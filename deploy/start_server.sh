@@ -61,6 +61,11 @@ if [ -d ".git" ]; then
     git pull || echo "Warning: git pull failed, using existing code"
 fi
 
-# Activate virtual environment
+# Bootstrap pip and create venv if needed, then install/update dependencies
+python3 -m ensurepip --upgrade 2>/dev/null || true
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
 # Start the server (using module syntax for src/ structure)
 exec python3 -m src.server

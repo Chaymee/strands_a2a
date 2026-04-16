@@ -181,7 +181,10 @@ cd deploy
 ```bash
 git clone <repo-url> /home/ubuntu/strands_a2a
 cd /home/ubuntu/strands_a2a
-pip3 install -r agents/calculator/requirements.txt
+python3 -m ensurepip --upgrade
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r agents/calculator/requirements.txt
 
 sudo cp agents/calculator/deploy/strands-calculator.service /etc/systemd/system/
 sudo systemctl daemon-reload
@@ -194,7 +197,10 @@ sudo systemctl start strands-calculator
 Same steps but use `agents/clock/`:
 
 ```bash
-pip3 install -r agents/clock/requirements.txt
+python3 -m ensurepip --upgrade
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r agents/clock/requirements.txt
 sudo cp agents/clock/deploy/strands-clock.service /etc/systemd/system/
 sudo systemctl enable strands-clock
 sudo systemctl start strands-clock
@@ -202,7 +208,7 @@ sudo systemctl start strands-clock
 
 ### Key Deploy Files (per agent)
 
-- **`agents/<name>/deploy/start_server.sh`** - Fetches secrets from Secrets Manager, sets PUBLIC_URL, git pulls, and starts the agent
+- **`agents/<name>/deploy/start_server.sh`** - Fetches secrets from Secrets Manager, sets PUBLIC_URL, git pulls, bootstraps pip via `ensurepip`, creates/updates the venv, and starts the agent
 - **`agents/<name>/deploy/strands-<name>.service`** - systemd service (set `AGENT_PORT` here to change port)
 
 ### Service Management (on EC2)
@@ -221,7 +227,8 @@ sudo systemctl status strands-clock.service
 # Update and restart
 cd /home/ubuntu/strands_a2a
 git pull
-pip3 install -r agents/calculator/requirements.txt  # or clock
+source .venv/bin/activate
+pip install -r agents/calculator/requirements.txt  # or clock
 sudo systemctl restart strands-calculator.service  # or strands-clock
 ```
 

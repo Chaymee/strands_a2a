@@ -195,8 +195,11 @@ SSH into the EC2 instance and run:
 git clone <repo-url> /home/ubuntu/strands_a2a
 cd /home/ubuntu/strands_a2a
 
-# Install dependencies system-wide
-pip3 install -r agents/calculator/requirements.txt
+# Bootstrap pip and create virtual environment
+python3 -m ensurepip --upgrade
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r agents/calculator/requirements.txt
 
 # Install and start the systemd service
 sudo cp agents/calculator/deploy/strands-calculator.service /etc/systemd/system/
@@ -219,8 +222,11 @@ SSH into a separate EC2 instance and run:
 git clone <repo-url> /home/ubuntu/strands_a2a
 cd /home/ubuntu/strands_a2a
 
-# Install dependencies system-wide
-pip3 install -r agents/clock/requirements.txt
+# Bootstrap pip and create virtual environment
+python3 -m ensurepip --upgrade
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r agents/clock/requirements.txt
 
 # Install and start the systemd service
 sudo cp agents/clock/deploy/strands-clock.service /etc/systemd/system/
@@ -248,7 +254,8 @@ sudo systemctl restart strands-clock.service
 # Update code and restart
 cd /home/ubuntu/strands_a2a
 git pull
-pip3 install -r agents/calculator/requirements.txt  # or clock
+source .venv/bin/activate
+pip install -r agents/calculator/requirements.txt  # or clock
 sudo systemctl restart strands-calculator.service  # or strands-clock
 ```
 

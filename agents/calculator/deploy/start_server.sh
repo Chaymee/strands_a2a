@@ -55,5 +55,11 @@ if [ -d ".git" ]; then
     git pull || echo "Warning: git pull failed, using existing code"
 fi
 
+# Bootstrap pip and create venv if needed, then install/update dependencies
+python3 -m ensurepip --upgrade 2>/dev/null || true
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r agents/calculator/requirements.txt
+
 export AGENT_PORT="$PORT"
 exec python3 -m agents.calculator
