@@ -6,58 +6,80 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a Strands A2A (Agent-to-Agent) server implementation that exposes AI agents via the A2A protocol. The project includes two agents:
 - **Calculator Agent** (port 9000): Performs basic arithmetic operations
-- **Factor Agent** (port 9001): Extracts numbers and returns their factors
+- **Clock Agent** (port 9001): Returns the current date and time for any timezone
 
 ## Project Structure
 
 ```
 strands_a2a/
+├── agents/
+│   ├── calculator/                        # Standalone Calculator Agent
+│   │   ├── agent.py                       # Agent logic and run() entry point
+│   │   ├── __main__.py                    # python -m agents.calculator entry point
+│   │   ├── requirements.txt               # Independent dependencies
+│   │   └── deploy/
+│   │       ├── start_server.sh            # EC2 startup script
+│   │       └── strands-calculator.service # systemd service
+│   └── clock/                             # Standalone Clock Agent
+│       ├── agent.py                       # Agent logic and run() entry point
+│       ├── __main__.py                    # python -m agents.clock entry point
+│       ├── requirements.txt               # Independent dependencies
+│       └── deploy/
+│           ├── start_server.sh            # EC2 startup script
+│           └── strands-clock.service      # systemd service
 ├── src/
 │   ├── __init__.py
-│   └── server.py              # Multi-agent server (self-contained)
+│   └── server.py                          # Local dev launcher (runs both agents)
 ├── tests/
-│   ├── load_test.py           # Load testing script
-│   └── run_load_test.sh       # Test wrapper
+│   ├── load_test.py                       # Load testing script
+│   └── run_load_test.sh                   # Test wrapper
 ├── deploy/
-│   ├── README.md              # Deployment guide
-│   ├── start_server.sh        # Production startup script
-│   ├── strands-a2a.service    # systemd service
-│   ├── setup-aws.sh           # AWS setup automation
-│   ├── user-data.sh           # EC2 initialization
-│   └── ec2-iam-policy.json    # IAM policy
+│   ├── README.md                          # Deployment guide
+│   ├── setup-aws.sh                       # Shared AWS IAM/Secrets setup
+│   ├── ec2-iam-policy.json                # IAM policy
+│   └── user-data.sh                       # EC2 initialization reference
 ├── examples/
-│   └── sample_proxy.yaml      # Solace config reference
-├── README.md                  # Main documentation
-├── CLAUDE.md                  # This file
-└── requirements.txt
+│   └── sample_proxy.yaml                  # Solace config reference
+├── README.md
+├── CLAUDE.md
+└── requirements.txt                       # Shared deps (for local dev / both agents)
 ```
 
 ## Architecture
 
-### Server Implementation
+### Agent Modules
 
-**`src/server.py`** - Multi-agent server (only execution pattern)
-- Runs BOTH agents in parallel using Python multiprocessing
-- Self-contained implementation with all logic inline
-- Starts Calculator on port 9000, Factor on port 9001
-- No separate calculator.py or factor.py files
+Each agent lives entirely in its own directory under `agents/` and is independently deployable to a separate EC2 instance.
+
+**`agents/calculator/agent.py`** - Calculator Agent
+- Uses `strands_tools.calculator` built-in tool
+- `run(port)` function is the only entry point
+- Can be run standalone: `python -m agents.calculator`
+
+**`agents/clock/agent.py`** - Clock Agent
+- Uses `strands_tools.current_time` built-in tool
+- `run(port)` function is the only entry point
+- Can be run standalone: `python -m agents.clock`
+
+**`src/server.py`** - Local dev multi-agent launcher only
+- Imports `run` from each agent module and spawns them as separate processes
+- Not used in production; each EC2 instance runs one agent directly
 
 ### Agent Structure
 
-Each agent follows this pattern:
-1. Tool functions decorated with `@tool` (from Strands)
-2. LiteLLM model configuration with custom endpoint
-3. Strands `Agent` instance with tools
-4. A2A server wrapping the agent
-5. FastAPI authentication middleware (Bearer token)
-6. The `/.well-known/agent-card.json` endpoint is always public (no auth required)
+Each agent module follows this pattern:
+1. `create_llm_model()` builds the LiteLLM model from environment variables
+2. `run(port)` creates the Agent, wraps it in A2AServer, adds auth middleware, calls `uvicorn.run`
+3. `/.well-known/agent-card.json` is always public (no auth required)
+4. All other endpoints require `Authorization: Bearer <API_PASSWORD>`
+5. `AGENT_PORT` env var overrides the default port (picked up by `__main__.py`)
 
 ### Dependencies
 
 - **strands-agents[a2a,litellm]** - Core Strands framework
-- **strands-agents-tools** - Calculator tool
+- **strands-agents-tools** - Built-in tools (calculator, current_time, etc.)
 - **a2a-sdk[sql]** - A2A protocol implementation
-- **bedrock-agentcore** - AWS Bedrock integration
+- **bedrock-agentcore** - AWS Bedrock integration (top-level requirements.txt only)
 
 ## Common Commands
 
@@ -66,12 +88,14 @@ Each agent follows this pattern:
 ```bash
 # Create virtual environment
 python -m venv .venv
-
-# Activate virtual environment (macOS/Linux)
 source .venv/bin/activate
 
-# Install dependencies
+# Install all dependencies (for local dev with both agents)
 pip install -r requirements.txt
+
+# Or install just what one agent needs (on a dedicated EC2 instance)
+pip install -r agents/calculator/requirements.txt
+pip install -r agents/clock/requirements.txt
 ```
 
 ### Running Locally
@@ -82,8 +106,15 @@ export API_PASSWORD="your_password"
 export LLM_SERVICE_API_KEY="your_key"
 export LLM_SERVICE_ENDPOINT="https://lite-llm.mymaas.net"  # Optional, has default
 
-# Run the multi-agent server (from project root)
+# Run both agents (local dev only)
 python -m src.server
+
+# Run a single agent independently
+python -m agents.calculator   # port 9000
+python -m agents.clock        # port 9001
+
+# Override port
+AGENT_PORT=8080 python -m agents.calculator
 ```
 
 ### Testing
@@ -91,8 +122,9 @@ python -m src.server
 ```bash
 # Test agent card (no auth required)
 curl http://localhost:9000/.well-known/agent-card.json
+curl http://localhost:9001/.well-known/agent-card.json
 
-# Test agent with authentication
+# Test Calculator Agent
 curl -X POST http://localhost:9000 \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer your_password" \
@@ -109,6 +141,23 @@ curl -X POST http://localhost:9000 \
     }
   }'
 
+# Test Clock Agent
+curl -X POST http://localhost:9001 \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your_password" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": "req-002",
+    "method": "message/send",
+    "params": {
+      "message": {
+        "role": "user",
+        "parts": [{"kind": "text", "text": "What time is it in Tokyo?"}],
+        "messageId": "12345678-1234-1234-1234-123456789013"
+      }
+    }
+  }'
+
 # Run load tests
 ./tests/run_load_test.sh light        # Quick smoke test (10 users)
 ./tests/run_load_test.sh 100          # 100 concurrent users
@@ -116,56 +165,77 @@ curl -X POST http://localhost:9000 \
 
 ## AWS Deployment
 
-The project includes comprehensive AWS EC2 deployment infrastructure:
-
-### Quick Deploy
+### Shared Setup (run once)
 
 ```bash
 cd deploy
-./setup-aws.sh  # Creates all AWS resources
+./setup-aws.sh  # Creates IAM role, instance profile, and Secrets Manager secret
 ```
 
-### Key Files
+### Deploying Calculator Agent to EC2
 
-- **`deploy/start_server.sh`** - Production startup script
-  - Fetches credentials from AWS Secrets Manager
-  - Auto-pulls latest code from git on startup
-  - Sets PUBLIC_URL based on EC2 metadata if available
-  - Activates venv and runs `python -m src.server`
+1. Launch an EC2 instance with the IAM instance profile from setup-aws.sh
+2. SSH in and clone the repo
+3. Copy the systemd service and start:
 
-- **`deploy/README.md`** - Complete deployment guide
-- **`deploy/setup-aws.sh`** - Automated AWS resource creation
-- **`deploy/strands-a2a.service`** - systemd service for auto-start
-- **`deploy/ec2-iam-policy.json`** - IAM policy for Secrets Manager access
+```bash
+git clone <repo-url> /home/ubuntu/strands_a2a
+cd /home/ubuntu/strands_a2a
+python -m venv .venv
+source .venv/bin/activate
+pip install -r agents/calculator/requirements.txt
+
+sudo cp agents/calculator/deploy/strands-calculator.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable strands-calculator
+sudo systemctl start strands-calculator
+```
+
+### Deploying Clock Agent to EC2
+
+Same steps but use `agents/clock/`:
+
+```bash
+pip install -r agents/clock/requirements.txt
+sudo cp agents/clock/deploy/strands-clock.service /etc/systemd/system/
+sudo systemctl enable strands-clock
+sudo systemctl start strands-clock
+```
+
+### Key Deploy Files (per agent)
+
+- **`agents/<name>/deploy/start_server.sh`** - Fetches secrets from Secrets Manager, sets PUBLIC_URL, git pulls, activates venv, and starts the agent
+- **`agents/<name>/deploy/strands-<name>.service`** - systemd service (set `AGENT_PORT` here to change port)
+
+### Service Management (on EC2)
+
+```bash
+# Calculator Agent
+sudo journalctl -u strands-calculator.service -f
+sudo systemctl restart strands-calculator.service
+sudo systemctl status strands-calculator.service
+
+# Clock Agent
+sudo journalctl -u strands-clock.service -f
+sudo systemctl restart strands-clock.service
+sudo systemctl status strands-clock.service
+
+# Update and restart
+cd /home/ubuntu/strands_a2a
+git pull
+source .venv/bin/activate
+pip install -r agents/calculator/requirements.txt  # or clock
+sudo systemctl restart strands-calculator.service  # or strands-clock
+```
 
 ### AWS Secrets
 
-The deployment uses AWS Secrets Manager secret: `strands-a2a/credentials`
+Both agents read from the same Secrets Manager secret: `strands-a2a/credentials`
 
 Required keys:
 - `API_PASSWORD`
 - `LLM_SERVICE_API_KEY`
 - `LLM_SERVICE_ENDPOINT`
-
-### Service Management (on EC2)
-
-```bash
-# View logs
-sudo journalctl -u strands-a2a.service -f
-
-# Restart service
-sudo systemctl restart strands-a2a.service
-
-# Check status
-sudo systemctl status strands-a2a.service
-
-# Update code and restart
-cd /home/ubuntu/strands_a2a
-git pull
-source .venv/bin/activate
-pip install -r requirements.txt
-sudo systemctl restart strands-a2a.service
-```
 
 ## Environment Variables
 
@@ -176,19 +246,20 @@ sudo systemctl restart strands-a2a.service
 ### Optional
 - `LLM_SERVICE_ENDPOINT` - Default: "https://lite-llm.mymaas.net"
 - `API_HOST` - Bind address, default: "0.0.0.0"
-- `PUBLIC_URL` - Public URL for agent cards (auto-detected on EC2)
-- `AWS_REGION` - For AWS deployments, default: "us-east-1"
+- `AGENT_PORT` - Override default port (9000 for calculator, 9001 for clock)
+- `PUBLIC_URL` - Public URL for agent cards (auto-detected from ifconfig.me on EC2)
+- `AWS_REGION` - For AWS deployments, default: "us-east-2"
 
 ## Key Design Patterns
 
-### Multi-Process Architecture
-The main server uses `multiprocessing.Process` to run agents in separate processes, allowing true parallelism.
+### Independent Agent Deployment
+Each agent directory is self-contained: its own `requirements.txt`, startup script, and systemd service. You can clone the repo to an EC2 instance and run only one agent without any coupling to the other.
 
 ### Authentication Pattern
-All endpoints require Bearer token authentication EXCEPT `/.well-known/agent-card.json`. This is implemented via FastAPI middleware.
+All endpoints require Bearer token authentication EXCEPT `/.well-known/agent-card.json`. Implemented via FastAPI middleware in each agent's `run()` function.
 
 ### LiteLLM Configuration
-Agents use LiteLLM with custom endpoints configured via:
+Agents use LiteLLM with custom endpoints:
 ```python
 LiteLLMModel(
     client_args={
@@ -199,18 +270,9 @@ LiteLLMModel(
 )
 ```
 
-### Tool Return Format
-Tools return dictionaries with:
-```python
-{
-    "status": "success" | "error",
-    "content": [{"text": "result text"}]
-}
-```
-
 ## Solace Agent Mesh Integration
 
 The project can integrate with Solace Agent Mesh for broader agent ecosystems:
 - See `examples/sample_proxy.yaml` for configuration example
-- Configure proxy to point to agent endpoints (9000, 9001)
-- Place config in `configs/agents` directory of Solace mesh
+- Configure proxy to point to each agent's endpoint
+- Place config in `configs/agents` directory of Solace Agent Mesh

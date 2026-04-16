@@ -7,18 +7,18 @@ A multi-agent server implementation using the Strands framework, exposing AI age
 This project provides two intelligent agents accessible through a standardized A2A interface:
 
 1. **Calculator Agent** (port 9000) - Performs arithmetic operations using the [Strands calculator tool](https://github.com/strands-agents/tools)
-2. **Factor Agent** (port 9001) - Extracts numbers and returns their prime factors
+2. **Clock Agent** (port 9001) - Returns the current date and time for any timezone
 
-Both agents run in parallel processes and are secured with Bearer token authentication.
+Each agent is **independently deployable** to its own EC2 instance, or you can run both together for local development.
 
 ## Quick Start
 
-### Local Development
+### Local Development (both agents together)
 
 ```bash
 # 1. Create and activate virtual environment
 python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+source .venv/bin/activate
 
 # 2. Install dependencies
 pip install -r requirements.txt
@@ -27,50 +27,63 @@ pip install -r requirements.txt
 export API_PASSWORD="your_secure_password"
 export LLM_SERVICE_API_KEY="your_litellm_api_key"
 
-# 4. Run the server
+# 4. Run both agents
 python -m src.server
 ```
 
-The server will start both agents:
+Both agents start in separate processes:
 - Calculator Agent: http://localhost:9000
-- Factor Agent: http://localhost:9001
+- Clock Agent: http://localhost:9001
 
-### AWS Deployment
+### Run a Single Agent
 
 ```bash
-# Quick deploy to AWS EC2
-cd deploy
-./setup-aws.sh  # Creates all AWS resources
+python -m agents.calculator   # port 9000 only
+python -m agents.clock        # port 9001 only
 
-# See deploy/README.md for detailed instructions
+AGENT_PORT=8080 python -m agents.calculator  # custom port
 ```
 
 ## Project Structure
 
 ```
 strands_a2a/
+├── agents/
+│   ├── calculator/                        # Standalone Calculator Agent
+│   │   ├── agent.py
+│   │   ├── __main__.py
+│   │   ├── requirements.txt
+│   │   └── deploy/
+│   │       ├── start_server.sh
+│   │       └── strands-calculator.service
+│   └── clock/                             # Standalone Clock Agent
+│       ├── agent.py
+│       ├── __main__.py
+│       ├── requirements.txt
+│       └── deploy/
+│           ├── start_server.sh
+│           └── strands-clock.service
 ├── src/
-│   └── server.py              # Multi-agent server implementation
+│   └── server.py              # Local dev launcher (runs both agents)
 ├── tests/
 │   ├── load_test.py           # Load testing script
 │   └── run_load_test.sh       # Test wrapper
 ├── deploy/
-│   ├── README.md              # AWS deployment guide
-│   ├── start_server.sh        # Production startup script
-│   ├── setup-aws.sh           # AWS resource automation
-│   ├── strands-a2a.service    # systemd service
+│   ├── README.md              # Detailed deployment guide
+│   ├── setup-aws.sh           # Shared AWS IAM/Secrets setup (run once)
 │   └── ec2-iam-policy.json    # IAM policy
 └── examples/
-    └── sample_proxy.yaml      # Solace mesh config
+    └── sample_proxy.yaml      # Solace Agent Mesh config reference
 ```
 
 ## Usage
 
 ### Testing the Agents
 
-**Agent Card (no auth required):**
+**Agent card (no auth required):**
 ```bash
 curl http://localhost:9000/.well-known/agent-card.json
+curl http://localhost:9001/.well-known/agent-card.json
 ```
 
 **Calculator Agent:**
@@ -92,7 +105,7 @@ curl -X POST http://localhost:9000 \
   }'
 ```
 
-**Factor Agent:**
+**Clock Agent:**
 ```bash
 curl -X POST http://localhost:9001 \
   -H "Content-Type: application/json" \
@@ -104,7 +117,7 @@ curl -X POST http://localhost:9001 \
     "params": {
       "message": {
         "role": "user",
-        "parts": [{"kind": "text", "text": "What are the factors of 24?"}],
+        "parts": [{"kind": "text", "text": "What time is it in Tokyo?"}],
         "messageId": "87654321-4321-4321-4321-210987654321"
       }
     }
@@ -113,45 +126,16 @@ curl -X POST http://localhost:9001 \
 
 ### Load Testing
 
-The load testing framework simulates concurrent users making requests to test performance, throughput, and reliability.
-
-**Using the Python script directly (recommended for AWS deployments):**
-
-```bash
-# Make the script executable
-chmod +x ./tests/load_test.py
-
-# Test Calculator Agent - 100 users, 5 requests each (500 total)
-./tests/load_test.py --url http://your-server.com:9000 --password your_password --agent calculator --users 100
-
-# Test Factor Agent - 100 users, 300 requests each (30,000 total)
-./tests/load_test.py --url http://your-server.com:9000 --password your_password --agent factor --users 100 --requests 300
-
-# Custom test with output file
-./tests/load_test.py --url http://your-server.com:9001 --password your_password --agent factor --users 50 --requests 10 --output results.json
-```
-
-**Using the wrapper script (for local testing):**
-
 ```bash
 # Quick smoke test (10 users, 5 requests = 50 total)
 ./tests/run_load_test.sh -p your_password light
 
-# Test with 100 concurrent users
+# 100 concurrent users against Calculator Agent
 ./tests/run_load_test.sh -p your_password 100
 
-# Test factor agent with 250 users
-./tests/run_load_test.sh -u http://localhost:9001 -p your_password -a factor 250
+# Direct script usage against a remote server
+./tests/load_test.py --url http://your-server.com:9000 --password your_password --agent calculator --users 100
 ```
-
-**What gets measured:**
-- Response times (min, max, mean, median, p95, p99)
-- Success/failure rates (HTTP 200 = success)
-- Throughput (requests per second)
-- Total duration
-- Error details (if any failures occur)
-
-**Note:** A "successful" request means the server returned HTTP 200. Timeouts, connection errors, or HTTP errors (401, 500, etc.) are counted as failures. If the service is overloaded or locked up, you'll see timeouts instead of HTTP responses.
 
 ## Configuration
 
@@ -162,14 +146,15 @@ chmod +x ./tests/load_test.py
 - `LLM_SERVICE_API_KEY` - API key for LiteLLM service
 
 **Optional:**
-- `LLM_SERVICE_ENDPOINT` - LiteLLM endpoint (default: "https://lite-llm.mymaas.net")
-- `API_HOST` - Bind address (default: "0.0.0.0")
-- `PUBLIC_URL` - Public URL for agent cards (auto-detected on EC2)
-- `AWS_REGION` - AWS region for deployments (default: "us-east-1")
+- `LLM_SERVICE_ENDPOINT` - LiteLLM endpoint (default: `https://lite-llm.mymaas.net`)
+- `API_HOST` - Bind address (default: `0.0.0.0`)
+- `AGENT_PORT` - Override default port (9000 for calculator, 9001 for clock)
+- `PUBLIC_URL` - Public URL for agent cards (auto-detected on EC2 via `ifconfig.me`)
+- `AWS_REGION` - AWS region (default: `us-east-2`)
 
 ### AWS Secrets Manager
 
-For AWS deployments, credentials are stored in AWS Secrets Manager at `strands-a2a/credentials`:
+For AWS deployments, credentials are stored at `strands-a2a/credentials`:
 
 ```json
 {
@@ -179,79 +164,135 @@ For AWS deployments, credentials are stored in AWS Secrets Manager at `strands-a
 }
 ```
 
-## Architecture
-
-### Multi-Agent Server
-
-The `src/server.py` file contains a self-contained implementation that:
-- Runs both agents in parallel using Python multiprocessing
-- Each agent runs in its own process for true parallelism
-- Handles graceful shutdown with Ctrl+C
-- Configures LiteLLM with custom endpoints
-- Implements FastAPI middleware for Bearer token authentication
-
-### Authentication
-
-- All endpoints require Bearer token authentication via `Authorization: Bearer <token>` header
-- **Exception:** `/.well-known/agent-card.json` is public (no auth required)
-- Token must match the `API_PASSWORD` environment variable
-
-### Agent Tools
-
-**Calculator Agent:**
-- Uses the Strands calculator tool for arithmetic operations
-- Supports addition, subtraction, multiplication, division
-
-**Factor Agent:**
-- Custom tool to find all factors of a number
-- Extracts numbers from natural language input
-- Returns factors in a structured format
-
 ## AWS Deployment
 
-The project includes complete AWS infrastructure:
+Each agent can be deployed independently to its own EC2 instance. Both use the same Secrets Manager secret.
 
-### Features
-- **Automatic startup** via systemd service
-- **Secure credentials** with AWS Secrets Manager
-- **IAM role-based access** (no hardcoded secrets)
-- **Auto-pull latest code** on server start
-- **Service monitoring** with journald logs
+### Step 1: Shared AWS Setup (run once)
 
-### Quick Deploy
+This creates the IAM role, instance profile, and Secrets Manager secret used by both agents.
 
 ```bash
 cd deploy
 ./setup-aws.sh
 ```
 
-This creates:
-- AWS Secrets Manager secret
-- IAM policy for secret access
-- IAM role and instance profile
-- Guided EC2 instance setup
+### Step 2: Launch an EC2 Instance
+
+- AMI: Ubuntu 22.04 LTS
+- Instance type: t3.small or larger
+- Attach the IAM instance profile created by `setup-aws.sh` (`StrandsA2AServerProfile`)
+- Attach **both** security groups:
+  - Your SSH security group (port 22)
+  - `sg-09b94e454a6a4f3c8` (Codespaces IP allowlist - controls access to agent ports 9000/9001)
+
+### Deploying the Calculator Agent
+
+SSH into the EC2 instance and run:
+
+```bash
+# Clone the repo
+git clone <repo-url> /home/ubuntu/strands_a2a
+cd /home/ubuntu/strands_a2a
+
+# Set up Python environment
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r agents/calculator/requirements.txt
+
+# Install and start the systemd service
+sudo cp agents/calculator/deploy/strands-calculator.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable strands-calculator
+sudo systemctl start strands-calculator
+
+# Verify it started
+sudo systemctl status strands-calculator
+```
+
+The service fetches secrets automatically from Secrets Manager on startup. The agent will be available on port 9000.
+
+### Deploying the Clock Agent
+
+SSH into a separate EC2 instance and run:
+
+```bash
+# Clone the repo
+git clone <repo-url> /home/ubuntu/strands_a2a
+cd /home/ubuntu/strands_a2a
+
+# Set up Python environment
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r agents/clock/requirements.txt
+
+# Install and start the systemd service
+sudo cp agents/clock/deploy/strands-clock.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable strands-clock
+sudo systemctl start strands-clock
+
+# Verify it started
+sudo systemctl status strands-clock
+```
+
+The agent will be available on port 9001.
 
 ### Service Management (on EC2)
 
 ```bash
-# View logs
-sudo journalctl -u strands-a2a.service -f
+# View live logs
+sudo journalctl -u strands-calculator.service -f
+sudo journalctl -u strands-clock.service -f
 
-# Restart service
-sudo systemctl restart strands-a2a.service
+# Restart
+sudo systemctl restart strands-calculator.service
+sudo systemctl restart strands-clock.service
 
-# Check status
-sudo systemctl status strands-a2a.service
-
-# Update and restart
+# Update code and restart
 cd /home/ubuntu/strands_a2a
 git pull
 source .venv/bin/activate
-pip install -r requirements.txt
-sudo systemctl restart strands-a2a.service
+pip install -r agents/calculator/requirements.txt  # or clock
+sudo systemctl restart strands-calculator.service  # or strands-clock
 ```
 
-See [deploy/README.md](deploy/README.md) for detailed deployment instructions.
+### Changing the Port
+
+Edit the `AGENT_PORT` line in the systemd service file before copying it:
+
+```ini
+# agents/calculator/deploy/strands-calculator.service
+Environment="AGENT_PORT=9000"  # change this
+```
+
+## Architecture
+
+### Independent Agent Design
+
+Each agent directory (`agents/calculator/`, `agents/clock/`) is fully self-contained:
+- Its own `requirements.txt` (no shared install needed)
+- Its own `start_server.sh` that handles secrets, git pull, and venv activation
+- Its own systemd service file
+- No dependency on the other agent at runtime
+
+The `src/server.py` launcher is for local development only. In production each EC2 instance runs one agent process directly.
+
+### Authentication
+
+- All endpoints require `Authorization: Bearer <API_PASSWORD>`
+- **Exception:** `/.well-known/agent-card.json` is always public (no auth required)
+
+### Agent Tools
+
+**Calculator Agent** uses `strands_tools.calculator`:
+- Arithmetic: addition, subtraction, multiplication, division
+- Powered by SymPy for accurate evaluation
+
+**Clock Agent** uses `strands_tools.current_time`:
+- Returns current time in ISO 8601 format
+- Accepts any IANA timezone string (e.g. `UTC`, `US/Pacific`, `Asia/Tokyo`)
+- Falls back to `UTC` if no timezone specified
 
 ## Solace Agent Mesh Integration
 
@@ -261,9 +302,9 @@ Connect your agents to the Solace Agent Mesh for broader agent ecosystems:
 # Example configuration (see examples/sample_proxy.yaml)
 proxied_agents:
   - name: "StrandsCalculator"
-    url: "http://localhost:9000"
-  - name: "StrandsFactor"
-    url: "http://localhost:9001"
+    url: "http://calculator-ec2-host:9000"
+  - name: "StrandsClock"
+    url: "http://clock-ec2-host:9001"
 ```
 
 1. Install [Solace Agent Mesh](https://github.com/SolaceLabs/solace-agent-mesh)
@@ -272,10 +313,10 @@ proxied_agents:
 
 ## Dependencies
 
-- **strands-agents[a2a,litellm]** (1.3.0+) - Core Strands framework
-- **strands-agents-tools** (0.2.0+) - Calculator tool
-- **a2a-sdk[sql]** (0.3.0+) - A2A protocol implementation
-- **bedrock-agentcore** - AWS Bedrock integration
+- **strands-agents[a2a,litellm]** - Core Strands framework
+- **strands-agents-tools** - Built-in tools (calculator, current_time)
+- **a2a-sdk[sql]** - A2A protocol implementation
+- **bedrock-agentcore** - AWS Bedrock integration (top-level only)
 
 ## License
 
@@ -283,4 +324,4 @@ See repository license file.
 
 ## Contributing
 
-Contributions are welcome! Please follow the existing code structure and conventions outlined in [CLAUDE.md](CLAUDE.md).
+Contributions are welcome. Follow the existing code structure and conventions outlined in [CLAUDE.md](CLAUDE.md).

@@ -25,7 +25,7 @@ aws secretsmanager create-secret \
         "LLM_SERVICE_API_KEY":"your_litellm_api_key_here",
         "LLM_SERVICE_ENDPOINT":"https://lite-llm.mymaas.net"
     }' \
-    --region us-east-1
+    --region us-east-2
 ```
 
 **Note the ARN** of the created secret - you'll need it for the IAM policy.
@@ -40,7 +40,7 @@ aws secretsmanager update-secret \
         "LLM_SERVICE_API_KEY":"new_key",
         "LLM_SERVICE_ENDPOINT":"https://lite-llm.mymaas.net"
     }' \
-    --region us-east-1
+    --region us-east-2
 ```
 
 ## Step 2: Create IAM Role and Policy
@@ -107,38 +107,32 @@ aws iam add-role-to-instance-profile \
 
 ## Step 3: Create Security Group
 
-Create a security group that allows traffic on ports 9000 and 9001:
+Create a security group for SSH access. Agent port access (9000/9001) is controlled by the
+Codespaces security group `sg-09b94e454a6a4f3c8`, which auto-registers allowed IP addresses
+and must be attached to every agent instance (see Step 5).
 
 ```bash
 aws ec2 create-security-group \
     --group-name strands-a2a-sg \
-    --description "Security group for Strands A2A Server" \
-    --vpc-id YOUR_VPC_ID
+    --description "Security group for Strands A2A Server (SSH only - agent ports via sg-09b94e454a6a4f3c8)" \
+    --vpc-id YOUR_VPC_ID \
+    --region us-east-2
 
 # Get the security group ID from the output
 SG_ID="sg-xxxxxxxxx"
 
-# Allow SSH access (adjust source as needed)
+# Allow SSH access (restrict to your admin IP in production)
 aws ec2 authorize-security-group-ingress \
     --group-id $SG_ID \
     --protocol tcp \
     --port 22 \
-    --cidr 0.0.0.0/0
-
-# Allow Calculator Agent (port 9000)
-aws ec2 authorize-security-group-ingress \
-    --group-id $SG_ID \
-    --protocol tcp \
-    --port 9000 \
-    --cidr 0.0.0.0/0
-
-# Allow Factor Agent (port 9001)
-aws ec2 authorize-security-group-ingress \
-    --group-id $SG_ID \
-    --protocol tcp \
-    --port 9001 \
-    --cidr 0.0.0.0/0
+    --cidr 0.0.0.0/0 \
+    --region us-east-2
 ```
+
+**Note:** Do not add inbound rules for ports 9000/9001 here. Those are managed by the
+Codespaces security group `sg-09b94e454a6a4f3c8`, which restricts access to registered
+Codespaces IP addresses only.
 
 ## Step 4: Create User Data Script
 
@@ -196,16 +190,19 @@ EOF
 
 Launch an Ubuntu EC2 instance with the IAM role and user data:
 
+Both the base security group and the Codespaces security group must be attached. The Codespaces
+group (`sg-09b94e454a6a4f3c8`) controls which IP addresses can reach the agent ports.
+
 ```bash
 aws ec2 run-instances \
     --image-id ami-0c7217cdde317cfec \
     --instance-type t3.medium \
     --key-name YOUR_KEY_PAIR \
-    --security-group-ids $SG_ID \
+    --security-group-ids $SG_ID sg-09b94e454a6a4f3c8 \
     --iam-instance-profile Name=StrandsA2AServerProfile \
     --user-data file:///tmp/user-data.sh \
     --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=Strands-A2A-Server}]' \
-    --region us-east-1
+    --region us-east-2
 ```
 
 **Note:** Replace `ami-0c7217cdde317cfec` with the latest Ubuntu AMI for your region.
@@ -264,7 +261,7 @@ Your agents are now accessible at:
    ```bash
    aws secretsmanager get-secret-value \
        --secret-id strands-a2a/credentials \
-       --region us-east-1
+       --region us-east-2
    ```
 
 3. Check IAM role is attached:
@@ -275,9 +272,19 @@ Your agents are now accessible at:
 
 ### Cannot access from external network
 
-1. Check security group rules:
+1. Confirm both security groups are attached to the instance:
    ```bash
-   aws ec2 describe-security-groups --group-ids $SG_ID
+   aws ec2 describe-instances --instance-ids YOUR_INSTANCE_ID \
+       --query 'Reservations[0].Instances[0].SecurityGroups' \
+       --region us-east-2
+   ```
+   You should see both `$SG_ID` (SSH) and `sg-09b94e454a6a4f3c8` (Codespaces IP allowlist).
+
+2. Confirm your Codespace IP is registered in `sg-09b94e454a6a4f3c8`:
+   ```bash
+   aws ec2 describe-security-groups --group-ids sg-09b94e454a6a4f3c8 \
+       --query 'SecurityGroups[0].IpPermissions' \
+       --region us-east-2
    ```
 
 2. Verify ports are listening:
@@ -330,7 +337,7 @@ aws secretsmanager update-secret \
         "LLM_SERVICE_API_KEY":"new_key",
         "LLM_SERVICE_ENDPOINT":"https://lite-llm.mymaas.net"
     }' \
-    --region us-east-1
+    --region us-east-2
 
 # Restart the service to pick up new secrets
 ssh ubuntu@YOUR_INSTANCE_PUBLIC_IP 'sudo systemctl restart strands-a2a.service'
@@ -376,7 +383,7 @@ sudo journalctl -u strands-a2a.service -f
 
 ## Security Best Practices
 
-1. **Restrict Security Group:** Only allow access from known IP addresses
+1. **IP Restriction via Codespaces SG:** Agent ports (9000/9001) are restricted to registered Codespaces IP addresses via `sg-09b94e454a6a4f3c8`. Always attach this group when launching instances.
 2. **Rotate Secrets:** Regularly update API passwords and keys
 3. **Use VPC:** Deploy in a private subnet with NAT gateway for production
 4. **Enable CloudTrail:** Monitor API access to Secrets Manager

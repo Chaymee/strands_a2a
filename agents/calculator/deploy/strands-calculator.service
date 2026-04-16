@@ -1,5 +1,5 @@
 [Unit]
-Description=Strands A2A Multi-Agent Server
+Description=Strands A2A Calculator Agent
 Documentation=https://github.com/strands-agents/strands-a2a
 After=network.target network-online.target
 Wants=network-online.target
@@ -10,28 +10,24 @@ User=ubuntu
 Group=ubuntu
 WorkingDirectory=/home/ubuntu/strands_a2a
 
-# Environment variables (non-secret)
 Environment="AWS_REGION=us-east-2"
 Environment="API_HOST=0.0.0.0"
+Environment="AGENT_PORT=9000"
 Environment="PATH=/home/ubuntu/strands_a2a/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
-# Start the server using the wrapper script
-ExecStart=/home/ubuntu/strands_a2a/deploy/start_server.sh
+ExecStart=/home/ubuntu/strands_a2a/agents/calculator/deploy/start_server.sh
 
-# Restart configuration
 Restart=always
 RestartSec=10
 StartLimitInterval=200
 StartLimitBurst=5
 
-# Security settings
 NoNewPrivileges=true
 PrivateTmp=true
 
-# Logging
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=strands-a2a
+SyslogIdentifier=strands-calculator
 
 [Install]
 WantedBy=multi-user.target

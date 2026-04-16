@@ -2,12 +2,12 @@
 """
 Load testing script for Strands A2A agents.
 
-Tests both Calculator and Factor agents with configurable concurrent users.
+Tests Calculator and Clock agents with configurable concurrent users.
 Provides detailed statistics on response times, success rates, and throughput.
 
 Usage:
     python load_test.py --url https://your-agent-url.com --users 100
-    python load_test.py --url https://your-agent-url.com --users 250 --agent factor
+    python load_test.py --url https://your-agent-url.com --users 250 --agent clock
     python load_test.py --help
 """
 
@@ -64,16 +64,16 @@ class LoadTester:
                 "What is 50 / 2?",
                 "Calculate 15 * 15",
             ]
-        elif self.agent_type == "factor":
+        elif self.agent_type == "clock":
             return [
-                "Extract numbers and find factors from: The number 12 is interesting",
-                "What are the factors of 24?",
-                "Extract numbers: I have 36 apples",
-                "Find factors in: The answer is 48",
-                "Extract and factor: There are 60 students",
-                "What are factors of 100?",
-                "Extract from: We need 72 units",
-                "Find factors in: The total is 84",
+                "What time is it in UTC?",
+                "What is the current time in Tokyo?",
+                "What time is it in New York?",
+                "What is the current time in London?",
+                "What time is it in Sydney?",
+                "What is the current time in Los Angeles?",
+                "What time is it in Paris?",
+                "What is the current time in Singapore?",
             ]
         else:
             raise ValueError(f"Unknown agent type: {self.agent_type}")
@@ -307,8 +307,8 @@ Examples:
   # Test calculator agent with 100 users
   python load_test.py --url http://localhost:9000 --password mypass --users 100
 
-  # Test factor agent with 250 users
-  python load_test.py --url http://localhost:9001 --password mypass --users 250 --agent factor
+  # Test clock agent with 250 users
+  python load_test.py --url http://localhost:9001 --password mypass --users 250 --agent clock
 
   # Custom requests per user
   python load_test.py --url https://my-agent.com --password mypass --users 100 --requests 10
@@ -330,7 +330,7 @@ Examples:
     )
     parser.add_argument(
         "--agent",
-        choices=["calculator", "factor"],
+        choices=["calculator", "clock"],
         default="calculator",
         help="Agent type to test (default: calculator)",
     )

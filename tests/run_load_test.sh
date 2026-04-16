@@ -29,7 +29,7 @@ SCENARIOS:
 OPTIONS:
     -u, --url URL           Agent URL (default: \$AGENT_URL or http://localhost:9000)
     -p, --password PASS     API password (default: \$API_PASSWORD)
-    -a, --agent TYPE        Agent type: calculator or factor (default: calculator)
+    -a, --agent TYPE        Agent type: calculator or clock (default: calculator)
     --users NUM             Number of concurrent users (for custom scenario)
     --requests NUM          Requests per user (default: 5)
     -o, --output FILE       Export results to JSON file
@@ -43,8 +43,8 @@ EXAMPLES:
     export API_PASSWORD="your_password"
     ./run_load_test.sh -u https://your-agent.com 100
 
-    # Test factor agent with 250 users
-    ./run_load_test.sh -u http://localhost:9001 -a factor 250
+    # Test clock agent with 250 users
+    ./run_load_test.sh -u http://localhost:9001 -a clock 250
 
     # Custom test with output file
     ./run_load_test.sh --users 150 --requests 10 -o results.json custom

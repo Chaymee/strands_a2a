@@ -1,17 +1,16 @@
 #!/bin/bash
 
-# Strands A2A Server Startup Script
-# Fetches secrets from AWS Secrets Manager and starts the multi-agent server
+# Calculator Agent Startup Script
+# Fetches secrets from AWS Secrets Manager and starts the Calculator Agent.
 
-set -e  # Exit on error
+set -e
 
-# Configuration
 SECRET_NAME="strands-a2a/credentials"
-REGION="${AWS_REGION:-us-east-2}"  # Default to us-east-2 if not set
+REGION="${AWS_REGION:-us-east-2}"
+PORT="${AGENT_PORT:-9000}"
 
 echo "Fetching secrets from AWS Secrets Manager..."
 
-# Fetch secrets from AWS Secrets Manager
 SECRET_JSON=$(aws secretsmanager get-secret-value \
     --secret-id "$SECRET_NAME" \
     --region "$REGION" \
@@ -24,13 +23,11 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Parse and export environment variables
 export API_PASSWORD=$(echo "$SECRET_JSON" | jq -r '.API_PASSWORD')
 export LLM_SERVICE_API_KEY=$(echo "$SECRET_JSON" | jq -r '.LLM_SERVICE_API_KEY')
 export LLM_SERVICE_ENDPOINT=$(echo "$SECRET_JSON" | jq -r '.LLM_SERVICE_ENDPOINT // "https://lite-llm.mymaas.net"')
 export API_HOST="${API_HOST:-0.0.0.0}"
 
-# Validate required secrets
 if [ -z "$API_PASSWORD" ] || [ "$API_PASSWORD" = "null" ]; then
     echo "ERROR: API_PASSWORD not found in secrets"
     exit 1
@@ -43,26 +40,22 @@ fi
 
 echo "Secrets loaded successfully"
 
-# Set PUBLIC_URL using public IP
 export PUBLIC_URL="http://$(curl -s ifconfig.me)"
 echo "Using public IP for agent card: $PUBLIC_URL"
 
-echo "Starting Strands A2A Server..."
+echo "Starting Calculator Agent on port $PORT..."
 
-# Get the directory where this script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+# Project root is three levels up: agents/calculator/deploy/ -> root
+PROJECT_ROOT="$SCRIPT_DIR/../../.."
+cd "$PROJECT_ROOT"
 
-# Change to project root directory (script is now in deploy/ subdirectory)
-cd "$SCRIPT_DIR/.."
-
-# Pull latest code from git on startup
 if [ -d ".git" ]; then
     echo "Pulling latest code from git..."
     git pull || echo "Warning: git pull failed, using existing code"
 fi
 
-# Activate virtual environment
-source "$SCRIPT_DIR/../.venv/bin/activate"
+source "$PROJECT_ROOT/.venv/bin/activate"
 
-# Start the server (using module syntax for src/ structure)
-exec python -m src.server
+export AGENT_PORT="$PORT"
+exec python -m agents.calculator
