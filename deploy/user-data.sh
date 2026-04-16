@@ -30,18 +30,13 @@ git clone https://github.com/Chaymee/strands_a2a.git
 
 cd strands_a2a
 
-# Create virtual environment
-echo "Creating Python virtual environment..."
-python3.11 -m venv .venv
-source .venv/bin/activate
-
 # Upgrade pip first
 echo "Upgrading pip..."
-pip install --upgrade pip
+python3.11 -m pip install --upgrade pip
 
-# Install requirements
+# Install requirements system-wide
 echo "Installing Python requirements..."
-pip install -r requirements.txt
+python3.11 -m pip install -r requirements.txt
 
 # Make start script executable
 chmod +x deploy/start_server.sh

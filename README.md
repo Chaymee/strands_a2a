@@ -195,10 +195,8 @@ SSH into the EC2 instance and run:
 git clone <repo-url> /home/ubuntu/strands_a2a
 cd /home/ubuntu/strands_a2a
 
-# Set up Python environment
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r agents/calculator/requirements.txt
+# Install dependencies system-wide
+pip3 install -r agents/calculator/requirements.txt
 
 # Install and start the systemd service
 sudo cp agents/calculator/deploy/strands-calculator.service /etc/systemd/system/
@@ -221,10 +219,8 @@ SSH into a separate EC2 instance and run:
 git clone <repo-url> /home/ubuntu/strands_a2a
 cd /home/ubuntu/strands_a2a
 
-# Set up Python environment
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r agents/clock/requirements.txt
+# Install dependencies system-wide
+pip3 install -r agents/clock/requirements.txt
 
 # Install and start the systemd service
 sudo cp agents/clock/deploy/strands-clock.service /etc/systemd/system/
@@ -252,8 +248,7 @@ sudo systemctl restart strands-clock.service
 # Update code and restart
 cd /home/ubuntu/strands_a2a
 git pull
-source .venv/bin/activate
-pip install -r agents/calculator/requirements.txt  # or clock
+pip3 install -r agents/calculator/requirements.txt  # or clock
 sudo systemctl restart strands-calculator.service  # or strands-clock
 ```
 
@@ -272,7 +267,7 @@ Environment="AGENT_PORT=9000"  # change this
 
 Each agent directory (`agents/calculator/`, `agents/clock/`) is fully self-contained:
 - Its own `requirements.txt` (no shared install needed)
-- Its own `start_server.sh` that handles secrets, git pull, and venv activation
+- Its own `start_server.sh` that handles secrets, git pull, and starting the agent
 - Its own systemd service file
 - No dependency on the other agent at runtime
 

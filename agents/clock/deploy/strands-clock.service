@@ -13,7 +13,7 @@ WorkingDirectory=/home/ubuntu/strands_a2a
 Environment="AWS_REGION=us-east-2"
 Environment="API_HOST=0.0.0.0"
 Environment="AGENT_PORT=9001"
-Environment="PATH=/home/ubuntu/strands_a2a/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 ExecStart=/home/ubuntu/strands_a2a/agents/clock/deploy/start_server.sh
 

@@ -55,7 +55,5 @@ if [ -d ".git" ]; then
     git pull || echo "Warning: git pull failed, using existing code"
 fi
 
-source "$PROJECT_ROOT/.venv/bin/activate"
-
 export AGENT_PORT="$PORT"
-exec python -m agents.clock
+exec python3 -m agents.clock

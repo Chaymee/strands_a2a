@@ -62,7 +62,5 @@ if [ -d ".git" ]; then
 fi
 
 # Activate virtual environment
-source "$SCRIPT_DIR/../.venv/bin/activate"
-
 # Start the server (using module syntax for src/ structure)
-exec python -m src.server
+exec python3 -m src.server
