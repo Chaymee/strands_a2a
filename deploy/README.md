@@ -138,56 +138,23 @@ Codespaces IP addresses only.
 
 Create a user data script for EC2 initialization:
 
+Use the `deploy/user-data.sh` file in the repository - it handles everything automatically.
+See that file for the full contents, or reference the key steps below:
+
 ```bash
-cat > /tmp/user-data.sh <<'EOF'
-#!/bin/bash
-
-# Update system
-apt-get update && apt-get upgrade -y
-
-# Install dependencies
-apt-get install -y python3 python3-ensurepip git jq awscli
-
-# Create application directory
-cd /home/ubuntu
-
-# Clone or copy your repository
-# Option A: Clone from Git
-git clone https://github.com/YOUR_USERNAME/strands_a2a.git
-
-# Option B: If using a tarball or zip, download it
-# wget https://your-repo/strands_a2a.tar.gz
-# tar -xzf strands_a2a.tar.gz
-
-cd strands_a2a
-
-# Bootstrap pip and create virtual environment
-python3 -m ensurepip --upgrade
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-
-# Make start script executable
-chmod +x deploy/start_server.sh
-
-# Set ownership
-chown -R ubuntu:ubuntu /home/ubuntu/strands_a2a
-
-# Copy systemd service file
-cp deploy/strands-a2a.service /etc/systemd/system/
-
-# Enable and start service
-systemctl daemon-reload
-systemctl enable strands-a2a.service
-systemctl start strands-a2a.service
-
-echo "Strands A2A Server deployment complete!"
-EOF
+# The user-data.sh script:
+# 1. Runs yum update and installs python3.11, python3.11-pip, git, jq, aws-cli
+# 2. Clones the repo to /home/ec2-user/strands_a2a
+# 3. Creates a venv with python3.11 and installs requirements
+# 4. Installs and starts the systemd service
+#
+# Pass it directly when launching:
+#   --user-data file://deploy/user-data.sh
 ```
 
 ## Step 5: Launch EC2 Instance
 
-Launch an Ubuntu EC2 instance with the IAM role and user data:
+Launch an Amazon Linux EC2 instance with the IAM role and user data:
 
 Both the base security group and the Codespaces security group must be attached. The Codespaces
 group (`sg-09b94e454a6a4f3c8`) controls which IP addresses can reach the agent ports.
@@ -204,14 +171,20 @@ aws ec2 run-instances \
     --region us-east-2
 ```
 
-**Note:** Replace `ami-0c7217cdde317cfec` with the latest Ubuntu AMI for your region.
+**Note:** Replace `ami-0c7217cdde317cfec` with the latest Amazon Linux 2023 AMI for us-east-2. Find it with:
+```bash
+aws ec2 describe-images --owners amazon \
+    --filters "Name=name,Values=al2023-ami-*-x86_64" \
+    --query 'sort_by(Images,&CreationDate)[-1].ImageId' \
+    --output text --region us-east-2
+```
 
 ## Step 6: Verify Deployment
 
 ### SSH into the instance:
 
 ```bash
-ssh -i your-key.pem ubuntu@YOUR_INSTANCE_PUBLIC_IP
+ssh -i your-key.pem ec2-user@YOUR_INSTANCE_PUBLIC_IP
 ```
 
 ### Check service status:
@@ -303,10 +276,10 @@ To update the code on a running instance:
 
 ```bash
 # SSH into the instance
-ssh -i your-key.pem ubuntu@YOUR_INSTANCE_PUBLIC_IP
+ssh -i your-key.pem ec2-user@YOUR_INSTANCE_PUBLIC_IP
 
 # Navigate to the application directory
-cd /home/ubuntu/strands_a2a
+cd /home/ec2-user/strands_a2a
 
 # Pull latest changes
 git pull
@@ -314,6 +287,9 @@ git pull
 # Update dependencies if needed
 source .venv/bin/activate
 pip install -r requirements.txt
+
+# Or just restart the service - start_server.sh reinstalls dependencies automatically
+
 
 # Restart the service
 sudo systemctl restart strands-a2a.service
@@ -337,7 +313,7 @@ aws secretsmanager update-secret \
     --region us-east-2
 
 # Restart the service to pick up new secrets
-ssh ubuntu@YOUR_INSTANCE_PUBLIC_IP 'sudo systemctl restart strands-a2a.service'
+ssh ec2-user@YOUR_INSTANCE_PUBLIC_IP 'sudo systemctl restart strands-a2a.service'
 ```
 
 ## Monitoring
@@ -347,7 +323,7 @@ ssh ubuntu@YOUR_INSTANCE_PUBLIC_IP 'sudo systemctl restart strands-a2a.service'
 Install CloudWatch agent:
 
 ```bash
-sudo apt-get install -y amazon-cloudwatch-agent
+sudo yum install -y amazon-cloudwatch-agent
 ```
 
 Configure it to send systemd journal logs to CloudWatch for centralized monitoring.

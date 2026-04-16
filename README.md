@@ -179,7 +179,7 @@ cd deploy
 
 ### Step 2: Launch an EC2 Instance
 
-- AMI: Ubuntu 22.04 LTS
+- AMI: Amazon Linux 2023 (use `aws ec2 describe-images` to get the latest AMI ID for us-east-2)
 - Instance type: t3.small or larger
 - Attach the IAM instance profile created by `setup-aws.sh` (`StrandsA2AServerProfile`)
 - Attach **both** security groups:
@@ -192,12 +192,11 @@ SSH into the EC2 instance and run:
 
 ```bash
 # Clone the repo
-git clone <repo-url> /home/ubuntu/strands_a2a
-cd /home/ubuntu/strands_a2a
+git clone <repo-url> /home/ec2-user/strands_a2a
+cd /home/ec2-user/strands_a2a
 
-# Bootstrap pip and create virtual environment
-python3 -m ensurepip --upgrade
-python3 -m venv .venv
+# Create virtual environment and install dependencies
+python3.11 -m venv .venv
 source .venv/bin/activate
 pip install -r agents/calculator/requirements.txt
 
@@ -219,12 +218,11 @@ SSH into a separate EC2 instance and run:
 
 ```bash
 # Clone the repo
-git clone <repo-url> /home/ubuntu/strands_a2a
-cd /home/ubuntu/strands_a2a
+git clone <repo-url> /home/ec2-user/strands_a2a
+cd /home/ec2-user/strands_a2a
 
-# Bootstrap pip and create virtual environment
-python3 -m ensurepip --upgrade
-python3 -m venv .venv
+# Create virtual environment and install dependencies
+python3.11 -m venv .venv
 source .venv/bin/activate
 pip install -r agents/clock/requirements.txt
 
@@ -252,7 +250,7 @@ sudo systemctl restart strands-calculator.service
 sudo systemctl restart strands-clock.service
 
 # Update code and restart
-cd /home/ubuntu/strands_a2a
+cd /home/ec2-user/strands_a2a
 git pull
 source .venv/bin/activate
 pip install -r agents/calculator/requirements.txt  # or clock

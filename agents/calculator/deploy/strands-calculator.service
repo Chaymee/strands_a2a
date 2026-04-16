@@ -6,16 +6,16 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=ubuntu
-Group=ubuntu
-WorkingDirectory=/home/ubuntu/strands_a2a
+User=ec2-user
+Group=ec2-user
+WorkingDirectory=/home/ec2-user/strands_a2a
 
 Environment="AWS_REGION=us-east-2"
 Environment="API_HOST=0.0.0.0"
 Environment="AGENT_PORT=9000"
-Environment="PATH=/home/ubuntu/strands_a2a/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="PATH=/home/ec2-user/strands_a2a/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
-ExecStart=/home/ubuntu/strands_a2a/agents/calculator/deploy/start_server.sh
+ExecStart=/home/ec2-user/strands_a2a/agents/calculator/deploy/start_server.sh
 
 Restart=always
 RestartSec=10

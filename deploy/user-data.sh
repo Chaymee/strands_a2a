@@ -30,9 +30,8 @@ git clone https://github.com/Chaymee/strands_a2a.git
 
 cd strands_a2a
 
-# Bootstrap pip and create virtual environment
-echo "Bootstrapping pip and creating virtual environment..."
-python3.11 -m ensurepip --upgrade 2>/dev/null || true
+# Create virtual environment (pip is available via python3.11-pip from yum)
+echo "Creating virtual environment..."
 python3.11 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
@@ -47,12 +46,6 @@ chmod +x deploy/start_server.sh
 # Set ownership
 echo "Setting file ownership..."
 chown -R ec2-user:ec2-user /home/ec2-user/strands_a2a
-
-# Update systemd service file paths for ec2-user
-echo "Configuring systemd service..."
-sed -i 's|/home/ubuntu|/home/ec2-user|g' deploy/strands-a2a.service
-sed -i 's|User=ubuntu|User=ec2-user|g' deploy/strands-a2a.service
-sed -i 's|Group=ubuntu|Group=ec2-user|g' deploy/strands-a2a.service
 
 # Copy systemd service file
 echo "Installing systemd service..."
